@@ -3,6 +3,7 @@ import { McpAgent } from "agents/mcp";
 import { z } from "zod";
 import { fetchStockData } from "./indicators";
 import { placeKiteOrder, getKiteHoldings, kiteLogin } from "./kite-client";
+import { LANDING_PAGE } from "./landing-page";
 
 const DEFAULT_WATCHLIST = [
   "INFRABEES.NS",
@@ -337,11 +338,23 @@ export class StockMCP extends McpAgent {
 }
 
 export default {
-  fetch(request: Request, env: any, ctx: ExecutionContext) {
+  async fetch(request: Request, env: any, ctx: ExecutionContext) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/mcp") {
-      return StockMCP.serve("/mcp").fetch(request, env, ctx);
+    if (url.pathname.startsWith("/mcp")) {
+      const accept = request.headers.get("accept") || "";
+      const isBrowser = request.method === "GET" && accept.includes("text/html");
+
+      if (isBrowser) {
+        return new Response(LANDING_PAGE(url.origin + "/mcp"), {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+
+      return StockMCP.serve("/mcp", {
+        binding: "MCP_OBJECT",
+        transport: "streamable-http",
+      }).fetch(request, env, ctx);
     }
 
     return new Response("Not found. Use /mcp for the MCP server.", { status: 404 });

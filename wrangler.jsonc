@@ -5,14 +5,14 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "cf-stock-mcp-server",
+	"workers_dev": true,
+	"main": "src/index.ts",
 	"routes": [
 		{
 			"pattern": "stock-mcp.durgadas.in",
 			"custom_domain": true
 		}
 	],
-	"workers_dev": false,
-	"main": "src/index.ts",
 	"compatibility_date": "2026-05-14",
 	"compatibility_flags": [
 		"nodejs_compat",

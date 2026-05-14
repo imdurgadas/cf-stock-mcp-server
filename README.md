@@ -16,12 +16,8 @@ Add the following configuration to your `claude_desktop_config.json` (or `mcp_co
 {
   "mcpServers": {
     "stock-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://stock.mcp.durgadas.in/mcp"
-      ]
+      "type": "streamable-http",
+      "url": "https://stock-mcp.durgadas.in/mcp"
     }
   }
 }
