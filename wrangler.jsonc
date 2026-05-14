@@ -7,7 +7,7 @@
 	"name": "cf-stock-mcp-server",
 	"routes": [
 		{
-			"pattern": "stock.mcp.durgadas.in",
+			"pattern": "stock-mcp.durgadas.in",
 			"custom_domain": true
 		}
 	],
