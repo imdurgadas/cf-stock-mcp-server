@@ -1,5 +1,7 @@
 import { RSI, EMA, ATR } from 'technicalindicators';
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
+
+const yahooFinance = new YahooFinance();
 
 export interface StockDataResult {
   symbol: string;
@@ -16,7 +18,10 @@ export interface StockDataResult {
   error?: string;
 }
 
-export async function fetchStockData(symbol: string): Promise<StockDataResult> {
+export async function fetchStockData(rawSymbol: string): Promise<StockDataResult> {
+  // Ensure we query Indian stocks by default if no exchange suffix is provided
+  const symbol = rawSymbol.includes('.') ? rawSymbol : `${rawSymbol}.NS`;
+
   try {
     const end = new Date();
     const start = new Date();

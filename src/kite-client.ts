@@ -38,7 +38,15 @@ const SYMBOL_MAPPING: Record<string, string> = {
 };
 
 export function convertSymbolToKite(yahooSymbol: string): string {
-  return SYMBOL_MAPPING[yahooSymbol] || yahooSymbol.replace(".NS", "");
+  if (SYMBOL_MAPPING[yahooSymbol]) {
+    return SYMBOL_MAPPING[yahooSymbol];
+  }
+  
+  if (yahooSymbol.endsWith('.BO')) {
+    return `BSE:${yahooSymbol.replace('.BO', '')}`;
+  }
+  
+  return `NSE:${yahooSymbol.replace('.NS', '')}`;
 }
 
 export async function placeKiteOrder(
