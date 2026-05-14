@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpAgent } from "agents/mcp";
+import { callable } from "agents";
 import { z } from "zod";
 import { fetchStockData } from "./indicators";
 import { placeKiteOrder, getKiteHoldings, kiteLogin } from "./kite-client";
@@ -335,6 +336,14 @@ export class StockMCP extends McpAgent {
       }
     );
   }
+
+  @callable()
+  async cleanup() {
+    console.log("Starting daily database cleanup...");
+    // This removes all persistent state, including SQLite tables
+    await this.ctx.storage.deleteAll();
+    console.log("Database cleanup complete.");
+  }
 }
 
 export default {
@@ -358,5 +367,12 @@ export default {
     }
 
     return new Response("Not found. Use /mcp for the MCP server.", { status: 404 });
+  },
+
+  async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext) {
+    console.log("Running scheduled cleanup...");
+    const id = env.MCP_OBJECT.idFromName("default");
+    const agent = env.MCP_OBJECT.get(id);
+    await agent.cleanup();
   },
 };

@@ -65,5 +65,10 @@
 				"StockMCP"
 			]
 		}
-	]
+	],
+	"triggers": {
+		"crons": [
+			"0 0 * * *"
+		]
+	}
 }
