@@ -48,3 +48,16 @@ If the application uses Durable Objects or Workflows, refer to the relevant best
   "define": { "__dirname": "\"\"", "__filename": "\"\"" }
   ```
 
+
+## Technical Analysis Strategy
+
+This MCP server implements a high-conviction technical analysis strategy. Agents should prioritize the `comment` field in the `analyze_stock` output as it synthesizes multiple complex indicators.
+
+### Key Indicator Thresholds
+- **ADX**: Values above 25 indicate a strong trend. Agents should favor trend-following strategies here.
+- **RSI**: Values < 30 are "Deep Value" signals; > 70 are "Exit/Avoid" signals.
+- **Volume Surge**: A `true` value indicates a 50% increase over the 20-day average, signaling institutional/high-conviction interest.
+- **Bollinger Bands**: Touching the lower band (`is_near_bb_lower: true`) is a high-probability mean-reversion entry point in bullish trends.
+
+### Analysis Philosophy
+The server is designed to find **"Apt Recommendations"** by default. Tools like `find_buy_opportunities` use strict high-conviction filters (MACD Bullish + Volume Surge + ADX Strength) to minimize false positives.

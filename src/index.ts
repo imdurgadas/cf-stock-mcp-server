@@ -57,8 +57,11 @@ export class StockMCP extends McpAgent {
         min_fall_pct: z.number().default(-2.0),
         min_rsi: z.number().default(50),
         require_st_green: z.boolean().default(true),
+        min_adx: z.number().default(20),
+        require_volume_surge: z.boolean().default(true),
+        require_macd_bullish: z.boolean().default(true),
       },
-      async ({ symbols, min_fall_pct, min_rsi, require_st_green }) => {
+      async ({ symbols, min_fall_pct, min_rsi, require_st_green, min_adx, require_volume_surge, require_macd_bullish }) => {
         const targetSymbols = symbols || DEFAULT_WATCHLIST;
         const candidates = [];
 
@@ -69,9 +72,13 @@ export class StockMCP extends McpAgent {
           const meetsCriteria =
             result.price_above_ema20 &&
             result.price_above_ema50 &&
-            result.rsi > min_rsi &&
+            (result.rsi === null || result.rsi > min_rsi) &&
             (!require_st_green || result.is_st_green) &&
-            result.fall_pct <= min_fall_pct;
+            result.fall_pct <= min_fall_pct &&
+            (result.adx === null || result.adx >= min_adx) &&
+            (!require_volume_surge || result.is_volume_surge || result.volume_sma20 === null) &&
+            (!require_macd_bullish || result.is_macd_bullish || result.macd === null);
+
 
           if (meetsCriteria) {
             candidates.push(result);
@@ -87,6 +94,9 @@ export class StockMCP extends McpAgent {
             min_fall_pct,
             min_rsi,
             require_st_green,
+            min_adx,
+            require_volume_surge,
+            require_macd_bullish,
           },
         };
 
@@ -95,6 +105,7 @@ export class StockMCP extends McpAgent {
         };
       }
     );
+
 
 
   }

@@ -24,3 +24,51 @@ Add the following configuration to your `claude_desktop_config.json` (or `mcp_co
 
 *(Note: Replace `https://stock.mcp.durgadas.in/mcp` with your own Cloudflare Worker URL if you deploy your own instance.)*
 
+## Technical Indicators & Strategy
+
+The server uses a multi-layered technical analysis strategy to evaluate stocks and generate recommendations.
+
+### Core Trend Indicators
+- **EMA (20 & 50)**: Exponential Moving Averages. Price above both indicates a bullish trend.
+- **Supertrend (10, 3)**: A volatility-based trend following indicator. "Green" indicates an active uptrend.
+- **ADX (14)**: Average Directional Index. Measures trend strength.
+    - **ADX > 20**: The market is starting to trend.
+    - **ADX > 25**: Strong trending market (ideal for trend-following).
+
+### Momentum & Volatility
+- **RSI (14)**: Relative Strength Index.
+    - **< 30**: Oversold (Potential mean reversion).
+    - **> 70**: Overbought (Potential exhaustion).
+    - **50-60**: Healthy momentum in an uptrend.
+- **MACD (12, 26, 9)**: Moving Average Convergence Divergence.
+    - **Bullish Crossover**: MACD line crosses above the Signal line (Positive momentum shift).
+- **Bollinger Bands (20, 2)**:
+    - **Lower Band**: Price touching or near the lower band indicates an oversold extreme in the current volatility window.
+
+### Volume Analysis
+- **Volume SMA (20)**: Compares current volume to the 20-day average.
+- **Volume Surge**: Triggered when volume is **> 1.5x (50% increase)** the average. High volume confirms the conviction of a price move.
+
+---
+
+## Recommendation Logic
+
+The server generates a `comment` field by weighing the evidence across all indicators:
+
+| Recommendation | Criteria |
+| :--- | :--- |
+| **Strong Buy (High Conviction)** | Strong Bullish trend + (Dip or BB Lower) + (Volume Surge or MACD Bullish) |
+| **Great Buy on Dips** | Strong Bullish trend + Price Dip (-1.5%+) |
+| **Trend-Following Entry** | Strong Bullish trend + MACD Bullish crossover |
+| **Momentum Buy** | Bullish trend + MACD Bullish crossover |
+| **Deep Value Buy** | RSI Oversold (<30) + Near Bollinger Lower Band |
+| **Avoid (Overbought)** | RSI Overbought (>70) |
+
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Run local development server |
+| `npm run deploy` | Deploy to Cloudflare |
+| `npx wrangler types` | Generate TypeScript types |
+
