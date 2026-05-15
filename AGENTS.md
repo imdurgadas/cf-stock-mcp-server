@@ -47,6 +47,4 @@ If the application uses Durable Objects or Workflows, refer to the relevant best
   ```jsonc
   "define": { "__dirname": "\"\"", "__filename": "\"\"" }
   ```
-- **Kite MCP Integration**:
-  - Kite MCP tools can be called via HTTP POST to `https://mcp.kite.trade/mcp` (using standard JSON-RPC formatting), which is highly compatible with Cloudflare Workers' native `fetch`.
-  - Kite MCP requires authentication. You must expose or call the `login` tool to generate an authorization link for the user, otherwise tools like `get_holdings` or `place_order` will return a `400 Bad Request` or "Invalid session ID".
+
