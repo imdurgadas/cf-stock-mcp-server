@@ -51,7 +51,7 @@ If the application uses Durable Objects or Workflows, refer to the relevant best
 
 ## Technical Analysis Strategy
 
-This MCP server implements a high-conviction technical analysis strategy. Agents should prioritize the `comment` field in the `analyze_stock` output as it synthesizes multiple complex indicators.
+This MCP server implements a high-conviction technical analysis strategy. Agents should prioritize the `recommendation` and `is_buy_signal` fields for automated decisions, while using the `comment` field for synthesis and reporting.
 
 ### Key Indicator Thresholds
 - **EMA 20/50 Crossover**: A `true` value for `is_ema_bullish_crossover` is a high-conviction "Trend Reversal" signal. It marks the shift from a neutral/bearish state to a bullish momentum phase.

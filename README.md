@@ -65,6 +65,13 @@ The server generates a `comment` field by weighing the evidence across all indic
 | **Momentum Buy** | Bullish trend + MACD Bullish crossover |
 | **Deep Value Buy** | RSI Oversold (<30) + Near Bollinger Lower Band |
 | **Avoid (Overbought)** | RSI Overbought (>70) |
+| **Sell / Exit** | Bearish trend (Price < EMA 20 & 50) |
+
+### Structured Output
+In addition to the `comment` field, the API returns programmatic fields for easier integration:
+- `recommendation`: Enum (`BUY`, `HOLD`, `SELL`).
+- `is_buy_signal`: Boolean (True for high-conviction entries).
+- `target_sell_price`: Target price for profit-booking (based on Bollinger Upper Band or +5% LTP).
 
 ## Commands
 
