@@ -30,6 +30,7 @@ The server uses a multi-layered technical analysis strategy to evaluate stocks a
 
 ### Core Trend Indicators
 - **EMA (20 & 50)**: Exponential Moving Averages. Price above both indicates a bullish trend.
+- **EMA 20/50 Crossover**: A "Golden Cross" (20 crossing above 50) signals the **start of a medium-term uptrend**. It is a momentum shift indicator that confirms recent price strength is overtaking the historical trend.
 - **Supertrend (10, 3)**: A volatility-based trend following indicator. "Green" indicates an active uptrend.
 - **ADX (14)**: Average Directional Index. Measures trend strength.
     - **ADX > 20**: The market is starting to trend.
@@ -58,7 +59,8 @@ The server generates a `comment` field by weighing the evidence across all indic
 | Recommendation | Criteria |
 | :--- | :--- |
 | **Strong Buy (High Conviction)** | Strong Bullish trend + (Dip or BB Lower) + (Volume Surge or MACD Bullish) |
-| **Great Buy on Dips** | Strong Bullish trend + Price Dip (-1.5%+) |
+| **Great Buy on Dips** | Strong Bullish trend + Price Dip (`fall_pct` <= -1.5%) |
+| **Trend-Start Entry** | EMA 20/50 Bullish Crossover (`is_ema_bullish_crossover`: true) |
 | **Trend-Following Entry** | Strong Bullish trend + MACD Bullish crossover |
 | **Momentum Buy** | Bullish trend + MACD Bullish crossover |
 | **Deep Value Buy** | RSI Oversold (<30) + Near Bollinger Lower Band |

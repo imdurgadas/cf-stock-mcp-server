@@ -60,8 +60,9 @@ export class StockMCP extends McpAgent {
         min_adx: z.number().default(20),
         require_volume_surge: z.boolean().default(true),
         require_macd_bullish: z.boolean().default(true),
+        require_ema_crossover: z.boolean().default(false),
       },
-      async ({ symbols, min_fall_pct, min_rsi, require_st_green, min_adx, require_volume_surge, require_macd_bullish }) => {
+      async ({ symbols, min_fall_pct, min_rsi, require_st_green, min_adx, require_volume_surge, require_macd_bullish, require_ema_crossover }) => {
         const targetSymbols = symbols || DEFAULT_WATCHLIST;
         const candidates = [];
 
@@ -77,7 +78,8 @@ export class StockMCP extends McpAgent {
             result.fall_pct <= min_fall_pct &&
             (result.adx === null || result.adx >= min_adx) &&
             (!require_volume_surge || result.is_volume_surge || result.volume_sma20 === null) &&
-            (!require_macd_bullish || result.is_macd_bullish || result.macd === null);
+            (!require_macd_bullish || result.is_macd_bullish || result.macd === null) &&
+            (!require_ema_crossover || result.is_ema_bullish_crossover);
 
 
           if (meetsCriteria) {
@@ -97,6 +99,7 @@ export class StockMCP extends McpAgent {
             min_adx,
             require_volume_surge,
             require_macd_bullish,
+            require_ema_crossover,
           },
         };
 

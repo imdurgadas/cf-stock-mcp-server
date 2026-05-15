@@ -54,10 +54,11 @@ If the application uses Durable Objects or Workflows, refer to the relevant best
 This MCP server implements a high-conviction technical analysis strategy. Agents should prioritize the `comment` field in the `analyze_stock` output as it synthesizes multiple complex indicators.
 
 ### Key Indicator Thresholds
+- **EMA 20/50 Crossover**: A `true` value for `is_ema_bullish_crossover` is a high-conviction "Trend Reversal" signal. It marks the shift from a neutral/bearish state to a bullish momentum phase.
 - **ADX**: Values above 25 indicate a strong trend. Agents should favor trend-following strategies here.
 - **RSI**: Values < 30 are "Deep Value" signals; > 70 are "Exit/Avoid" signals.
 - **Volume Surge**: A `true` value indicates a 50% increase over the 20-day average, signaling institutional/high-conviction interest.
 - **Bollinger Bands**: Touching the lower band (`is_near_bb_lower: true`) is a high-probability mean-reversion entry point in bullish trends.
 
 ### Analysis Philosophy
-The server is designed to find **"Apt Recommendations"** by default. Tools like `find_buy_opportunities` use strict high-conviction filters (MACD Bullish + Volume Surge + ADX Strength) to minimize false positives.
+The server is designed to find **"Apt Recommendations"** by default. Tools like `find_buy_opportunities` use strict high-conviction filters (EMA Crossover or MACD Bullish + Volume Surge + ADX Strength) to minimize false positives. Priority should be given to stocks that show a fresh EMA 20/50 crossover as they represent the highest potential for an early trend entry.

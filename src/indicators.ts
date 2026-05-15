@@ -14,6 +14,7 @@ export interface StockDataResult {
   price_above_ema20: boolean;
   price_above_ema50: boolean;
   is_st_green: boolean;
+  is_ema_bullish_crossover: boolean;
   // New Indicators
   adx: number | null;
   macd: {
@@ -89,6 +90,12 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
     const ema50Values = EMA.calculate({ values: closes, period: 50 });
     const currentEma20 = ema20Values[ema20Values.length - 1] ?? null;
     const currentEma50 = ema50Values[ema50Values.length - 1] ?? null;
+    const prevEma20 = ema20Values[ema20Values.length - 2] ?? null;
+    const prevEma50 = ema50Values[ema50Values.length - 2] ?? null;
+
+    const isEmaBullishCrossover = (currentEma20 !== null && currentEma50 !== null && prevEma20 !== null && prevEma50 !== null) 
+      ? (prevEma20 <= prevEma50 && currentEma20 > currentEma50) 
+      : false;
 
     // Calculate Supertrend (10, 3)
     const isStGreen = calculateSupertrend(highs, lows, closes, 10, 3);
@@ -146,6 +153,7 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       if (isVolumeSurge) alerts.push("Volume surge detected");
       if (isMacdBullish) alerts.push("MACD Bullish crossover");
       if (isNearBbLower) alerts.push("Price near Bollinger Lower Band (Oversold extreme)");
+      if (isEmaBullishCrossover) alerts.push("EMA 20/50 Bullish Crossover (Trend Reversal)");
       if ((currentAdx ?? 0) > 25) alerts.push("Strong trending market");
       
       let recommendation = "Hold";
@@ -171,6 +179,8 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
         recommendation = "Avoid / Profit Booking (Overbought)";
       } else if (isMacdBullish && ltp > (currentEma20 ?? 0)) {
         recommendation = "Potential Reversal Entry";
+      } else if (isEmaBullishCrossover) {
+        recommendation = "Trend-Start Entry";
       }
       
       let summary = `${recommendation}. Trend is ${trend} with ${momentum} momentum.`;
@@ -190,6 +200,7 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       price_above_ema20: currentEma20 !== null ? ltp > currentEma20 : false,
       price_above_ema50: currentEma50 !== null ? ltp > currentEma50 : false,
       is_st_green: isStGreen,
+      is_ema_bullish_crossover: isEmaBullishCrossover,
       adx: safeFormat(currentAdx),
       macd: currentMacd ? {
         macd: safeNum(currentMacd.macd),
