@@ -67,11 +67,19 @@ The server generates a `comment` field by weighing the evidence across all indic
 | **Avoid (Overbought)** | RSI Overbought (>70) |
 | **Sell / Exit** | Bearish trend (Price < EMA 20 & 50) |
 
-### Structured Output
-In addition to the `comment` field, the API returns programmatic fields for easier integration:
-- `recommendation`: Enum (`BUY`, `HOLD`, `SELL`).
-- `is_buy_signal`: Boolean (True for high-conviction entries).
-- `target_sell_price`: Target price for profit-booking (based on Bollinger Upper Band or +5% LTP).
+### Structured Output & Decision Support
+In addition to the human-readable `comment`, the API returns programmatic fields to support automated trading or dashboard integrations:
+
+- **`recommendation`**: 
+    - `BUY`: Technical conditions favor an entry (e.g., EMA Crossover, MACD Bullish, or Dip in a Strong Uptrend).
+    - `HOLD`: Trend is stable (Strong Bullish) but no fresh entry point is available, or the market is Neutral.
+    - `SELL`: Technical breakdown or exhaustion (Bearish trend or RSI > 70).
+- **`is_buy_signal`**: A high-conviction boolean. Set to `true` only when the system detects a fresh `BUY` recommendation.
+- **`target_sell_price`**: A dynamically calculated profit target.
+    - **Logic**: It looks at the **Upper Bollinger Band** (resistance) first. If the price is near or above it, it defaults to a **+5% gain** from the current price. 
+    - *Note: This field is `null` for `SELL` recommendations.*
+
+---
 
 ## Commands
 

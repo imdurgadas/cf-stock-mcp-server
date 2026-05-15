@@ -62,3 +62,8 @@ This MCP server implements a high-conviction technical analysis strategy. Agents
 
 ### Analysis Philosophy
 The server is designed to find **"Apt Recommendations"** by default. Tools like `find_buy_opportunities` use strict high-conviction filters (EMA Crossover or MACD Bullish + Volume Surge + ADX Strength) to minimize false positives. Priority should be given to stocks that show a fresh EMA 20/50 crossover as they represent the highest potential for an early trend entry.
+
+### Automated Decision Making
+- **Triggering Notifications/Orders**: Agents should monitor the `is_buy_signal` field. If `true`, it indicates a high-probability entry point.
+- **Profit Taking**: The `target_sell_price` should be used to set limit orders or GTT (Good Till Triggered) targets.
+- **Risk Management**: If `recommendation` shifts to `SELL`, agents should advise an immediate exit to protect capital.
