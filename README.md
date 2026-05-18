@@ -13,14 +13,18 @@ The server exposes the following tools:
 2. **`analyze_multiple_stocks`**: Batch processes analysis for a list of tickers.
 3. **`find_buy_opportunities`**: Scans a custom or default watchlist of tickers to find matching buy signals based on configurable filters (EMA crossover, RSI oversold, volume surge, etc.).
 4. **`get_watchlist`**: Retrieves lists of stock/ETF symbols for a given sector or category.
-    *   **Parameters**: `category` (enum: `"ETF"`, `"IT"`, `"BANK"`, `"ENERGY"`, `"POTENTIAL"`, `"ALL"`). Default is `"ETF"`.
+    *   **Parameters**: `category` (enum: `"ETF"`, `"IT"`, `"BANK"`, `"ENERGY"`, `"POTENTIAL"`, `"MUTUAL_FUND"`, `"ALL"`). Default is `"ETF"`.
     *   **Categories**:
         *   `ETF`: Multi-asset index and commodity tracking ETFs (`NIFTYBEES.NS`, `GOLDBEES.NS`, etc.)
         *   `IT`: Sector-focused IT ETFs and major IT stocks (`ITBEES.NS`, `TCS.NS`, `INFY.NS`, etc.)
         *   `BANK`: Banking sector ETFs and major private/public banks (`BANKBEES.NS`, `HDFCBANK.NS`, `SBIN.NS`, etc.)
         *   `ENERGY`: Energy/utility sector ETFs and major corporations (`CPSEETF.NS`, `RELIANCE.NS`, `NTPC.NS`, etc.)
-        *   `POTENTIAL`: Highly active, structural growth stocks that have high potential and are under the radar (`HFCL.NS`, `KPITTECH.NS`, `MAZDOCK.NS`, `RVNL.NS`, `CDSL.NS`, `IREDA.NS`)
-
+        *   `POTENTIAL`: Highly active, structural growth stocks under the radar (`HFCL.NS`, `KPITTECH.NS`, `MAZDOCK.NS`, `RVNL.NS`, `CDSL.NS`, `IREDA.NS`)
+        *   `MUTUAL_FUND`: A high-conviction mutual fund watchlist containing 9 major direct growth schemes matched directly from active holdings.
+5. **`analyze_mutual_fund`**: Evaluates trailing performance and risk ratios (Sharpe, Sortino, volatility) for an Indian Mutual Fund from daily NAV sequences.
+    *   **Parameters**: `scheme_code` (number, optional). If omitted, the tool automatically scans and evaluates the entire high-conviction **MUTUAL_FUND** watchlist in parallel!
+6. **`search_mutual_funds`**: Searches the active AMFI mutual fund registry in real-time. Matches wildcard queries against names, scheme codes, or ISINs, returning exact pairing data (Scheme Name, Scheme Code, Growth ISIN, Reinvestment ISIN).
+    *   **Parameters**: `query` (string, required). Wildcard search query (e.g. fund house like `"Mirae"`, `"Parag Parikh"`, `"Zerodha"` or ISIN growth code).
 ## Connecting via Claude Desktop / Antigravity
 
 Since this MCP server is hosted remotely on Cloudflare and uses SSE (Server-Sent Events) over HTTPS, you will need to use an NPM bridge to connect standard `stdio`-based MCP clients (like Claude Desktop or Antigravity) to it.

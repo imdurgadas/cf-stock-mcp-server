@@ -250,3 +250,65 @@ export async function fetchMutualFundData(schemeCode: number, riskFreeRate: numb
     };
   }
 }
+
+export interface AMFISearchResult {
+  scheme_code: number;
+  scheme_name: string;
+  isin_growth: string;
+  isin_reinvestment: string;
+  latest_nav: number | null;
+  date: string;
+}
+
+export async function searchMutualFundsAMFI(query: string): Promise<AMFISearchResult[]> {
+  try {
+    console.log(`[AMFI Search] Fetching master list from https://www.amfiindia.com/spages/NAVAll.txt...`);
+    const res = await fetch("https://www.amfiindia.com/spages/NAVAll.txt");
+    if (!res.ok) throw new Error("Failed to fetch AMFI NAV list from amfiindia.com");
+
+    const text = await res.text();
+    const lines = text.split("\n");
+    const results: AMFISearchResult[] = [];
+    const lowerQuery = query.toLowerCase().trim();
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("Scheme Code")) continue;
+
+      const parts = trimmed.split(";");
+      if (parts.length >= 4) {
+        const schemeCodeStr = parts[0].trim();
+        const isinGrowth = parts[1].trim();
+        const isinReinvest = parts[2].trim();
+        const schemeName = parts[3].trim();
+
+        if (!schemeCodeStr || !schemeName) continue;
+
+        const matchCode = schemeCodeStr.toLowerCase().includes(lowerQuery);
+        const matchName = schemeName.toLowerCase().includes(lowerQuery);
+        const matchIsin = isinGrowth.toLowerCase().includes(lowerQuery) || isinReinvest.toLowerCase().includes(lowerQuery);
+
+        if (matchCode || matchName || matchIsin) {
+          const schemeCode = parseInt(schemeCodeStr, 10);
+          if (!isNaN(schemeCode)) {
+            const navVal = parts[4] ? parseFloat(parts[4].trim()) : null;
+            results.push({
+              scheme_code: schemeCode,
+              scheme_name: schemeName,
+              isin_growth: isinGrowth || "N/A",
+              isin_reinvestment: isinReinvest || "N/A",
+              latest_nav: isNaN(navVal as number) ? null : navVal,
+              date: parts[5] ? parts[5].trim() : "N/A"
+            });
+          }
+        }
+      }
+    }
+
+    results.sort((a, b) => a.scheme_name.localeCompare(b.scheme_name));
+    return results.slice(0, 50);
+  } catch (err: any) {
+    console.error("Error in searchMutualFundsAMFI:", err.message);
+    throw err;
+  }
+}

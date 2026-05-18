@@ -3,7 +3,7 @@ import { McpAgent } from "agents/mcp";
 import { callable } from "agents";
 import { z } from "zod";
 import { fetchStockData } from "./indicators";
-import { fetchMutualFundData } from "./mf-indicators";
+import { fetchMutualFundData, searchMutualFundsAMFI } from "./mf-indicators";
 import { LANDING_PAGE } from "./landing-page";
 
 const WATCHLISTS: Record<string, string[]> = {
@@ -47,7 +47,30 @@ const WATCHLISTS: Record<string, string[]> = {
     "CDSL.NS",
     "IREDA.NS",
   ],
+  MUTUAL_FUND: [
+    "149039",
+    "153011",
+    "120847",
+    "118449",
+    "151412",
+    "122639",
+    "152156",
+    "153656",
+    "153757",
+  ]
 };
+
+const MF_WATCHLIST = [
+  149039,
+  153011,
+  120847,
+  118449,
+  151412,
+  122639,
+  152156,
+  153656,
+  153757
+];
 
 const DEFAULT_WATCHLIST = WATCHLISTS.ETF;
 
@@ -228,7 +251,7 @@ export class StockMCP extends McpAgent {
     this.server.tool(
       "get_watchlist",
       {
-        category: z.enum(["ETF", "IT", "BANK", "ENERGY", "POTENTIAL", "ALL"]).default("ETF")
+        category: z.enum(["ETF", "IT", "BANK", "ENERGY", "POTENTIAL", "MUTUAL_FUND", "ALL"]).default("ETF")
       },
       async ({ category }) => {
         console.log(`[get_watchlist] Triggered for category: ${category}`);
@@ -247,15 +270,48 @@ export class StockMCP extends McpAgent {
     this.server.tool(
       "analyze_mutual_fund",
       {
-        scheme_code: z.number().describe("The unique AMFI mutual fund scheme code"),
+        scheme_code: z.number().optional().describe("The unique AMFI mutual fund scheme code (optional, defaults to analyzing the full watchlist if omitted)"),
         risk_free_rate: z.number().default(6.5).describe("Annualized risk free rate in % for Sharpe calculation")
       },
       async ({ scheme_code, risk_free_rate }) => {
-        console.log(`[analyze_mutual_fund] Triggered for scheme code: ${scheme_code}`);
-        const result = await fetchMutualFundData(scheme_code, risk_free_rate);
-        console.log(`[analyze_mutual_fund] Evaluation for ${scheme_code}: status = ${result.status}, grade = ${result.evaluation.grade}`);
+        if (scheme_code !== undefined) {
+          console.log(`[analyze_mutual_fund] Triggered for scheme code: ${scheme_code}`);
+          const result = await fetchMutualFundData(scheme_code, risk_free_rate);
+          console.log(`[analyze_mutual_fund] Evaluation for ${scheme_code}: status = ${result.status}, grade = ${result.evaluation.grade}`);
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        } else {
+          console.log(`[analyze_mutual_fund] No scheme code provided. Analyzing default Mutual Fund Watchlist...`);
+          const results = await Promise.all(
+            MF_WATCHLIST.map(async (code) => {
+              try {
+                return await fetchMutualFundData(code, risk_free_rate);
+              } catch (e: any) {
+                console.error(`Error analyzing watchlist scheme ${code}:`, e.message);
+                return { scheme_code: code, status: "error", error: e.message };
+              }
+            })
+          );
+          return {
+            content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+          };
+        }
+      }
+    );
+
+    // search_mutual_funds
+    this.server.tool(
+      "search_mutual_funds",
+      {
+        query: z.string().describe("Wildcard search query (e.g. fund house like 'Mirae', 'Parag Parikh', 'Zerodha', or scheme name/ISIN)")
+      },
+      async ({ query }) => {
+        console.log(`[search_mutual_funds] Triggered search for query: "${query}"`);
+        const results = await searchMutualFundsAMFI(query);
+        console.log(`[search_mutual_funds] Found ${results.length} matching mutual funds`);
         return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
         };
       }
     );
