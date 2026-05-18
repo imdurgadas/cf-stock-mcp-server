@@ -62,9 +62,13 @@ export class StockMCP extends McpAgent {
       "analyze_stock",
       { symbol: z.string() },
       async ({ symbol }) => {
-        console.log(`[analyze_stock] Triggered for symbol: ${symbol}`);
-        const result = await fetchStockData(symbol);
-        console.log(`[analyze_stock] Result for ${symbol}: status = ${result.status}, price = ${result.ltp}, rec = ${result.recommendation}`);
+        let cleanSymbol = symbol.toUpperCase();
+        if (!cleanSymbol.includes(".")) {
+          cleanSymbol += ".NS";
+        }
+        console.log(`[analyze_stock] Triggered for symbol: ${symbol} (formatted: ${cleanSymbol})`);
+        const result = await fetchStockData(cleanSymbol);
+        console.log(`[analyze_stock] Result for ${cleanSymbol}: status = ${result.status}, price = ${result.ltp}, rec = ${result.recommendation}`);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
@@ -79,9 +83,13 @@ export class StockMCP extends McpAgent {
         console.log(`[analyze_multiple_stocks] Triggered for symbols:`, symbols);
         const results = [];
         for (const sym of symbols) {
-          console.log(`[analyze_multiple_stocks] Evaluating ${sym}...`);
-          const res = await fetchStockData(sym);
-          console.log(`[analyze_multiple_stocks] Evaluated ${sym}: price = ${res.ltp}, rec = ${res.recommendation}`);
+          let cleanSymbol = sym.toUpperCase();
+          if (!cleanSymbol.includes(".")) {
+            cleanSymbol += ".NS";
+          }
+          console.log(`[analyze_multiple_stocks] Evaluating ${sym} (formatted: ${cleanSymbol})...`);
+          const res = await fetchStockData(cleanSymbol);
+          console.log(`[analyze_multiple_stocks] Evaluated ${cleanSymbol}: price = ${res.ltp}, rec = ${res.recommendation}`);
           results.push(res);
         }
         return {
@@ -107,22 +115,44 @@ export class StockMCP extends McpAgent {
       async ({ symbols, watchlists, min_fall_pct, min_rsi, require_st_green, min_adx, require_volume_surge, require_macd_bullish, require_ema_crossover }) => {
         let targetSymbols: string[] = [];
 
+        // 1. Accumulate all input requests (symbols + watchlists)
+        const inputs = new Set<string>();
         if (symbols && symbols.length > 0) {
-          targetSymbols = symbols;
-        } else {
-          // If specific symbols are not provided, determine watchlists to load
-          const selectedWatchlists = watchlists && watchlists.length > 0 ? watchlists : ["ETF"];
-          const symbolSet = new Set<string>();
-          for (const wl of selectedWatchlists) {
-            const list = WATCHLISTS[wl];
+          for (const s of symbols) {
+            inputs.add(s);
+          }
+        }
+        if (watchlists && watchlists.length > 0) {
+          for (const wl of watchlists) {
+            inputs.add(wl);
+          }
+        }
+
+        // If no inputs are provided, default to ETF watchlist category
+        if (inputs.size === 0) {
+          inputs.add("ETF");
+        }
+
+        // 2. Expand watchlist categories and format standard tickers
+        const symbolSet = new Set<string>();
+        for (const item of inputs) {
+          const upperItem = item.toUpperCase();
+          if (upperItem in WATCHLISTS) {
+            const list = WATCHLISTS[upperItem as keyof typeof WATCHLISTS];
             if (list) {
               for (const sym of list) {
-                symbolSet.add(sym);
+                symbolSet.add(sym.toUpperCase());
               }
             }
+          } else {
+            let cleanSym = upperItem;
+            if (!cleanSym.includes(".")) {
+              cleanSym += ".NS";
+            }
+            symbolSet.add(cleanSym);
           }
-          targetSymbols = Array.from(symbolSet);
         }
+        targetSymbols = Array.from(symbolSet);
 
         console.log(`[find_buy_opportunities] Scanning ${targetSymbols.length} symbols with criteria:`, {
           watchlists: watchlists || ["ETF"],
