@@ -260,35 +260,78 @@ export interface AMFISearchResult {
   date: string;
 }
 
+// In-memory cache for the AMFI master list (approx. 2MB, 17k+ records)
+let amfiCache: { data: AMFISearchResult[]; timestamp: number } | null = null;
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes TTL
+
 export async function searchMutualFundsAMFI(query: string): Promise<AMFISearchResult[]> {
   try {
-    console.log(`[AMFI Search] Fetching master list from https://www.amfiindia.com/spages/NAVAll.txt...`);
-    const res = await fetch("https://www.amfiindia.com/spages/NAVAll.txt");
-    if (!res.ok) throw new Error("Failed to fetch AMFI NAV list from amfiindia.com");
+    const now = Date.now();
+    let records: AMFISearchResult[] = [];
 
-    const text = await res.text();
-    const lines = text.split("\n");
-    const results: AMFISearchResult[] = [];
-    const lowerQuery = query.toLowerCase().trim();
+    if (amfiCache && (now - amfiCache.timestamp) < CACHE_TTL) {
+      console.log(`[AMFI Search] Using cached AMFI list (${amfiCache.data.length} records)`);
+      records = amfiCache.data;
+    } else {
+      let text = "";
+      const cacheUrl = "https://www.amfiindia.com/spages/NAVAll.txt";
+      const cacheKey = new Request(cacheUrl);
+      const cache = (globalThis as any).caches?.default;
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("Scheme Code")) continue;
+      let cachedResponse = null;
+      if (cache) {
+        try {
+          cachedResponse = await cache.match(cacheKey);
+        } catch (e: any) {
+          console.warn("[AMFI Search] Cloudflare Cache API match warning:", e.message);
+        }
+      }
 
-      const parts = trimmed.split(";");
-      if (parts.length >= 4) {
-        const schemeCodeStr = parts[0].trim();
-        const isinGrowth = parts[1].trim();
-        const isinReinvest = parts[2].trim();
-        const schemeName = parts[3].trim();
+      if (cachedResponse) {
+        console.log("[AMFI Search] Hit Cloudflare Edge CDN Cache (L2)!");
+        text = await cachedResponse.text();
+      } else {
+        console.log(`[AMFI Search] L2 Cache Miss. Fetching master list from ${cacheUrl}...`);
+        const res = await fetch(cacheUrl);
+        if (!res.ok) throw new Error("Failed to fetch AMFI NAV list from amfiindia.com");
 
-        if (!schemeCodeStr || !schemeName) continue;
+        text = await res.text();
 
-        const matchCode = schemeCodeStr.toLowerCase().includes(lowerQuery);
-        const matchName = schemeName.toLowerCase().includes(lowerQuery);
-        const matchIsin = isinGrowth.toLowerCase().includes(lowerQuery) || isinReinvest.toLowerCase().includes(lowerQuery);
+        if (cache) {
+          try {
+            // Force cache duration to 1 hour on Cloudflare edge CDN using Cache-Control
+            const headers = new Headers();
+            headers.set("Content-Type", "text/plain");
+            headers.set("Cache-Control", "public, max-age=3600");
 
-        if (matchCode || matchName || matchIsin) {
+            const responseToCache = new Response(text, {
+              status: 200,
+              headers
+            });
+            await cache.put(cacheKey, responseToCache);
+            console.log("[AMFI Search] Saved response to Cloudflare Edge CDN Cache (L2)!");
+          } catch (e: any) {
+            console.warn("[AMFI Search] Cloudflare Cache API put warning:", e.message);
+          }
+        }
+      }
+
+      const lines = text.split("\n");
+      const results: AMFISearchResult[] = [];
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("Scheme Code")) continue;
+
+        const parts = trimmed.split(";");
+        if (parts.length >= 4) {
+          const schemeCodeStr = parts[0].trim();
+          const isinGrowth = parts[1].trim();
+          const isinReinvest = parts[2].trim();
+          const schemeName = parts[3].trim();
+
+          if (!schemeCodeStr || !schemeName) continue;
+
           const schemeCode = parseInt(schemeCodeStr, 10);
           if (!isNaN(schemeCode)) {
             const navVal = parts[4] ? parseFloat(parts[4].trim()) : null;
@@ -303,10 +346,21 @@ export async function searchMutualFundsAMFI(query: string): Promise<AMFISearchRe
           }
         }
       }
+      amfiCache = { data: results, timestamp: now };
+      records = results;
+      console.log(`[AMFI Search] Warm memory cache loaded (L1) with ${results.length} AMFI records`);
     }
 
-    results.sort((a, b) => a.scheme_name.localeCompare(b.scheme_name));
-    return results.slice(0, 50);
+    const lowerQuery = query.toLowerCase().trim();
+    const matches = records.filter(r => {
+      return r.scheme_code.toString().includes(lowerQuery) ||
+             r.scheme_name.toLowerCase().includes(lowerQuery) ||
+             r.isin_growth.toLowerCase().includes(lowerQuery) ||
+             r.isin_reinvestment.toLowerCase().includes(lowerQuery);
+    });
+
+    matches.sort((a, b) => a.scheme_name.localeCompare(b.scheme_name));
+    return matches.slice(0, 50);
   } catch (err: any) {
     console.error("Error in searchMutualFundsAMFI:", err.message);
     throw err;
