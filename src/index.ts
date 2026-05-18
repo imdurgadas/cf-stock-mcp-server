@@ -62,7 +62,9 @@ export class StockMCP extends McpAgent {
       "analyze_stock",
       { symbol: z.string() },
       async ({ symbol }) => {
+        console.log(`[analyze_stock] Triggered for symbol: ${symbol}`);
         const result = await fetchStockData(symbol);
+        console.log(`[analyze_stock] Result for ${symbol}: status = ${result.status}, price = ${result.ltp}, rec = ${result.recommendation}`);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
@@ -74,9 +76,13 @@ export class StockMCP extends McpAgent {
       "analyze_multiple_stocks",
       { symbols: z.array(z.string()) },
       async ({ symbols }) => {
+        console.log(`[analyze_multiple_stocks] Triggered for symbols:`, symbols);
         const results = [];
         for (const sym of symbols) {
-          results.push(await fetchStockData(sym));
+          console.log(`[analyze_multiple_stocks] Evaluating ${sym}...`);
+          const res = await fetchStockData(sym);
+          console.log(`[analyze_multiple_stocks] Evaluated ${sym}: price = ${res.ltp}, rec = ${res.recommendation}`);
+          results.push(res);
         }
         return {
           content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
@@ -89,6 +95,7 @@ export class StockMCP extends McpAgent {
       "find_buy_opportunities",
       {
         symbols: z.array(z.string()).optional(),
+        watchlists: z.array(z.enum(["ETF", "IT", "BANK", "ENERGY", "POTENTIAL"])).optional(),
         min_fall_pct: z.number().default(-2.0),
         min_rsi: z.number().default(50),
         require_st_green: z.boolean().default(true),
@@ -97,25 +104,66 @@ export class StockMCP extends McpAgent {
         require_macd_bullish: z.boolean().default(true),
         require_ema_crossover: z.boolean().default(false),
       },
-      async ({ symbols, min_fall_pct, min_rsi, require_st_green, min_adx, require_volume_surge, require_macd_bullish, require_ema_crossover }) => {
-        const targetSymbols = symbols || DEFAULT_WATCHLIST;
+      async ({ symbols, watchlists, min_fall_pct, min_rsi, require_st_green, min_adx, require_volume_surge, require_macd_bullish, require_ema_crossover }) => {
+        let targetSymbols: string[] = [];
+
+        if (symbols && symbols.length > 0) {
+          targetSymbols = symbols;
+        } else {
+          // If specific symbols are not provided, determine watchlists to load
+          const selectedWatchlists = watchlists && watchlists.length > 0 ? watchlists : ["ETF"];
+          const symbolSet = new Set<string>();
+          for (const wl of selectedWatchlists) {
+            const list = WATCHLISTS[wl];
+            if (list) {
+              for (const sym of list) {
+                symbolSet.add(sym);
+              }
+            }
+          }
+          targetSymbols = Array.from(symbolSet);
+        }
+
+        console.log(`[find_buy_opportunities] Scanning ${targetSymbols.length} symbols with criteria:`, {
+          watchlists: watchlists || ["ETF"],
+          min_fall_pct,
+          min_rsi,
+          require_st_green,
+          min_adx,
+          require_volume_surge,
+          require_macd_bullish,
+          require_ema_crossover
+        });
         const candidates = [];
 
         for (const sym of targetSymbols) {
           const result = await fetchStockData(sym);
-          if (result.status === "error") continue;
+          if (result.status === "error") {
+            console.log(`[find_buy_opportunities] Error fetching ${sym}: ${result.error}`);
+            continue;
+          }
 
-          const meetsCriteria =
-            result.price_above_ema20 &&
-            result.price_above_ema50 &&
-            (result.rsi === null || result.rsi > min_rsi) &&
-            (!require_st_green || result.is_st_green) &&
-            result.fall_pct <= min_fall_pct &&
-            (result.adx === null || result.adx >= min_adx) &&
-            (!require_volume_surge || result.is_volume_surge || result.volume_sma20 === null) &&
-            (!require_macd_bullish || result.is_macd_bullish || result.macd === null) &&
-            (!require_ema_crossover || result.is_ema_bullish_crossover);
+          const priceAboveEma20 = result.price_above_ema20;
+          const priceAboveEma50 = result.price_above_ema50;
+          const rsiOk = (result.rsi === null || result.rsi > min_rsi);
+          const stOk = (!require_st_green || result.is_st_green);
+          const fallOk = result.fall_pct <= min_fall_pct;
+          const adxOk = (result.adx === null || result.adx >= min_adx);
+          const volOk = (!require_volume_surge || result.is_volume_surge || result.volume_sma20 === null);
+          const macdOk = (!require_macd_bullish || result.is_macd_bullish || result.macd === null);
+          const emaCrossOk = (!require_ema_crossover || result.is_ema_bullish_crossover);
 
+          const meetsCriteria = priceAboveEma20 && priceAboveEma50 && rsiOk && stOk && fallOk && adxOk && volOk && macdOk && emaCrossOk;
+
+          console.log(`[find_buy_opportunities] Symbol: ${sym} | Meets Criteria: ${meetsCriteria ? "✅ YES" : "❌ NO"}`);
+          console.log(`  - Price above EMA20/50: ${priceAboveEma20}/${priceAboveEma50} (Price: ${result.ltp}, EMA20: ${result.ema_20}, EMA50: ${result.ema_50})`);
+          console.log(`  - Fall Pct (<= ${min_fall_pct}%): ${fallOk} (Actual: ${result.fall_pct.toFixed(2)}%)`);
+          console.log(`  - RSI (> ${min_rsi}): ${rsiOk} (Actual: ${result.rsi})`);
+          console.log(`  - Supertrend Green (req: ${require_st_green}): ${stOk} (Actual: ${result.is_st_green})`);
+          console.log(`  - ADX (>= ${min_adx}): ${adxOk} (Actual: ${result.adx})`);
+          console.log(`  - Volume Surge (req: ${require_volume_surge}): ${volOk} (Surge: ${result.is_volume_surge}, SMA20: ${result.volume_sma20})`);
+          console.log(`  - MACD Bullish (req: ${require_macd_bullish}): ${macdOk} (Bullish: ${result.is_macd_bullish})`);
+          console.log(`  - EMA Crossover (req: ${require_ema_crossover}): ${emaCrossOk} (Bullish: ${result.is_ema_bullish_crossover})`);
 
           if (meetsCriteria) {
             candidates.push(result);
@@ -123,6 +171,7 @@ export class StockMCP extends McpAgent {
         }
 
         candidates.sort((a, b) => a.fall_pct - b.fall_pct);
+        console.log(`[find_buy_opportunities] Completed scan. Found ${candidates.length} opportunities:`, candidates.map(c => c.symbol));
 
         const response = {
           opportunities: candidates,
@@ -151,6 +200,7 @@ export class StockMCP extends McpAgent {
         category: z.enum(["ETF", "IT", "BANK", "ENERGY", "POTENTIAL", "ALL"]).default("ETF")
       },
       async ({ category }) => {
+        console.log(`[get_watchlist] Triggered for category: ${category}`);
         if (category === "ALL") {
           return {
             content: [{ type: "text", text: JSON.stringify(WATCHLISTS, null, 2) }]
