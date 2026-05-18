@@ -3,6 +3,7 @@ import { McpAgent } from "agents/mcp";
 import { callable } from "agents";
 import { z } from "zod";
 import { fetchStockData } from "./indicators";
+import { fetchMutualFundData } from "./mf-indicators";
 import { LANDING_PAGE } from "./landing-page";
 
 const WATCHLISTS: Record<string, string[]> = {
@@ -238,6 +239,23 @@ export class StockMCP extends McpAgent {
         }
         return {
           content: [{ type: "text", text: JSON.stringify({ category, symbols: WATCHLISTS[category] }, null, 2) }]
+        };
+      }
+    );
+
+    // analyze_mutual_fund
+    this.server.tool(
+      "analyze_mutual_fund",
+      {
+        scheme_code: z.number().describe("The unique AMFI mutual fund scheme code"),
+        risk_free_rate: z.number().default(6.5).describe("Annualized risk free rate in % for Sharpe calculation")
+      },
+      async ({ scheme_code, risk_free_rate }) => {
+        console.log(`[analyze_mutual_fund] Triggered for scheme code: ${scheme_code}`);
+        const result = await fetchMutualFundData(scheme_code, risk_free_rate);
+        console.log(`[analyze_mutual_fund] Evaluation for ${scheme_code}: status = ${result.status}, grade = ${result.evaluation.grade}`);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
       }
     );

@@ -97,6 +97,67 @@ In addition to the human-readable `comment`, the API returns programmatic fields
 
 ---
 
+## 🌾 Mutual Fund Analytics & Risk Metrics
+
+Evaluating Mutual Funds (MFs) programmatically differs significantly from evaluating individual equities. Instead of technical trading signals (RSI, Bollinger Bands, Volume surges), mutual funds are evaluated based on **risk-adjusted performance metrics, historical rolling returns, and downside volatility protection**.
+
+The server exposes a new tool specifically for this:
+*   **`analyze_mutual_fund`**: Fetches complete historical daily NAV details for any Indian Mutual Fund via the open AMFI API and computes standard rolling performance, annualized volatility, and risk ratios.
+    *   **Parameters**:
+        *   `scheme_code` (number, required): The unique AMFI mutual fund scheme code (e.g., `119819` for SBI Contra Fund Direct Growth).
+        *   `risk_free_rate` (number, optional): Annualized risk-free rate in percentage (defaults to `6.5` representing standard Indian G-Sec yields).
+
+---
+
+### 📈 Trailing & Compounded Returns
+Unlike individual stocks where only latest price changes are analyzed, mutual funds are assessed over multiple standardized time horizons to determine consistency:
+*   **Trailing Returns (1M, 3M, 6M)**: Compares the latest NAV against the NAV exactly 30, 90, or 180 days ago. Expressed as **Absolute Returns** as they represent short-term gains.
+*   **Compounded Annualized Growth Rate (1Y, 3Y, 5Y CAGR)**: Standardizes rolling compound growth over long-term periods. It calculates the exact fractional year count ($Y$) between the target past NAV and latest NAV, and computes:
+    $$\text{CAGR} = \left( \frac{\text{NAV}_{\text{latest}}}{\text{NAV}_{\text{past}}} \right)^{\frac{1}{Y}} - 1$$
+
+---
+
+### 🛡️ Volatility & Risk-Adjusted Indicators
+Return percentages alone do not tell the whole story. A fund that gains $15\%$ with wild $25\%$ swings is often less desirable than a fund that gains $14\%$ with a smooth $8\%$ volatility. To quantify this, the server calculates:
+
+1.  **Annualized Volatility (Standard Deviation - $\sigma$)**:
+    *   **What it is**: The standard deviation of the daily NAV returns over the last 1 year ($250$ trading days).
+    *   **Formula**: Multiplies daily log standard deviation by $\sqrt{250}$ to annualize it, expressed as a percentage.
+    *   **What it means**: Represents the overall dispersion or price swings of the fund. Lower volatility means steadier, smoother NAV growth.
+
+2.  **Annualized Downside Volatility**:
+    *   **What it is**: The standard deviation calculated by replacing all positive daily returns with $0$.
+    *   **What it means**: Measures only the *negative* or "bad" volatility (market drops). It does not penalize a fund manager for large *upward* price movements.
+
+3.  **Sharpe Ratio**:
+    *   **What it is**: The standard measure of risk-adjusted return (excess return earned per unit of total volatility).
+    *   **Formula**:
+        $$\text{Sharpe} = \frac{\text{Trailing 1Y CAGR} - \text{Risk Free Rate}}{\text{Annualized Volatility}}$$
+    *   **What it means**: Tells you whether the fund's outperformance is a result of smart asset selection or simply taking excess risk.
+        *   *Sharpe > 1.0*: Good (the excess return justifies the volatility).
+        *   *Sharpe > 1.5*: Excellent (highly efficient fund management).
+        *   *Sharpe < 0.2*: Poor (fails to generate sufficient returns relative to the risk taken).
+
+4.  **Sortino Ratio**:
+    *   **What it is**: A refined version of the Sharpe ratio that only considers downside/negative volatility in the denominator.
+    *   **Formula**:
+        $$\text{Sortino} = \frac{\text{Trailing 1Y CAGR} - \text{Risk Free Rate}}{\text{Annualized Downside Volatility}}$$
+    *   **What it means**: Particularly valuable for evaluating equity/mid-cap funds. If a fund has a high Sharpe but a low Sortino, it means its downward swings are highly severe. A high Sortino indicates superb capital preservation in down markets.
+
+---
+
+### 🏆 Evaluation Grading Scale
+Based on the calculated indicators, the server assigns a dynamic performance Grade:
+
+| Grade | Criteria | Actionable Translation |
+| :--- | :--- | :--- |
+| **EXCELLENT** | Sharpe Ratio > 1.5 & 1Y Return > 15% | **Top Tier Outperformer**: Outstanding risk-adjusted return; highly efficient fund management. |
+| **GOOD** | Sharpe Ratio > 0.8 or 1Y Return > 12% | **High Performer**: Consistent returns with controlled, healthy volatility levels. |
+| **AVERAGE** | Sharpe Ratio >= 0.2 or 1Y Return > 6% | **Stable/Inline**: Solid middle-of-the-pack performance, typically matching standard index averages. |
+| **POOR** | Sharpe Ratio < 0.2 | **Underperformer**: Low returns or excess volatility that is not financially justified. |
+
+---
+
 ## Commands
 
 | Command | Purpose |
