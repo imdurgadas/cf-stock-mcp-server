@@ -116,9 +116,11 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       SimpleMAOscillator: false,
       SimpleMASignal: false,
     });
-    const currentMacd = macdValues[macdValues.length - 1] || null;
-    const prevMacd = macdValues[macdValues.length - 2];
-    const isMacdBullish = (currentMacd && prevMacd) ? (currentMacd.macd > currentMacd.signal && prevMacd.macd <= prevMacd.signal) : false;
+    const currentMacd = (macdValues[macdValues.length - 1] || null) as any;
+    const prevMacd = macdValues[macdValues.length - 2] as any;
+    const isMacdBullish = (currentMacd && prevMacd) 
+      ? ((currentMacd.macd || currentMacd.MACD) > currentMacd.signal && (prevMacd.macd || prevMacd.MACD) <= prevMacd.signal) 
+      : false;
 
     // Calculate Bollinger Bands (20, 2)
     const bbValues = BollingerBands.calculate({ values: closes, period: 20, stdDev: 2 });
@@ -228,7 +230,7 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       is_ema_bullish_crossover: isEmaBullishCrossover,
       adx: safeFormat(currentAdx),
       macd: currentMacd ? {
-        macd: safeNum(currentMacd.macd),
+        macd: safeNum(currentMacd.macd || currentMacd.MACD),
         signal: safeNum(currentMacd.signal),
         histogram: safeNum(currentMacd.histogram),
       } : null,
@@ -260,6 +262,7 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       price_above_ema20: false,
       price_above_ema50: false,
       is_st_green: false,
+      is_ema_bullish_crossover: false,
       adx: null,
       macd: null,
       is_macd_bullish: false,

@@ -5,15 +5,50 @@ import { z } from "zod";
 import { fetchStockData } from "./indicators";
 import { LANDING_PAGE } from "./landing-page";
 
-const DEFAULT_WATCHLIST = [
-  "INFRABEES.NS",
-  "PSUBNKBEES.NS",
-  "NIFTYBEES.NS",
-  "GOLDBEES.NS",
-  "SILVER1.NS",
-  "CPSEETF.NS",
-  "ITBEES.NS",
-];
+const WATCHLISTS: Record<string, string[]> = {
+  ETF: [
+    "INFRABEES.NS",
+    "PSUBNKBEES.NS",
+    "NIFTYBEES.NS",
+    "GOLDBEES.NS",
+    "SILVER1.NS",
+    "CPSEETF.NS",
+    "ITBEES.NS",
+  ],
+  IT: [
+    "ITBEES.NS",
+    "TCS.NS",
+    "INFY.NS",
+    "WIPRO.NS",
+    "HCLTECH.NS",
+    "PERSISTENT.NS",
+    "COFORGE.NS"
+  ],
+  BANK: [
+    "BANKBEES.NS",
+    "PSUBNKBEES.NS",
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "SBIN.NS",
+  ],
+  ENERGY: [
+    "CPSEETF.NS",
+    "RELIANCE.NS",
+    "ONGC.NS",
+    "NTPC.NS",
+    "POWERGRID.NS",
+  ],
+  POTENTIAL: [
+    "HFCL.NS",
+    "KPITTECH.NS",
+    "MAZDOCK.NS",
+    "RVNL.NS",
+    "CDSL.NS",
+    "IREDA.NS",
+  ],
+};
+
+const DEFAULT_WATCHLIST = WATCHLISTS.ETF;
 
 export class StockMCP extends McpAgent {
   server = new McpServer({
@@ -109,7 +144,23 @@ export class StockMCP extends McpAgent {
       }
     );
 
-
+    // get_watchlist
+    this.server.tool(
+      "get_watchlist",
+      {
+        category: z.enum(["ETF", "IT", "BANK", "ENERGY", "POTENTIAL", "ALL"]).default("ETF")
+      },
+      async ({ category }) => {
+        if (category === "ALL") {
+          return {
+            content: [{ type: "text", text: JSON.stringify(WATCHLISTS, null, 2) }]
+          };
+        }
+        return {
+          content: [{ type: "text", text: JSON.stringify({ category, symbols: WATCHLISTS[category] }, null, 2) }]
+        };
+      }
+    );
 
   }
 

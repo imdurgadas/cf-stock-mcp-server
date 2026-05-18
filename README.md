@@ -4,6 +4,22 @@ This is an MCP (Model Context Protocol) Server deployed on Cloudflare Workers. I
 
 ## Features
 - **Stock Analysis**: Analyzes Indian stocks to find buy opportunities based on technical indicators (RSI, EMA 20/50, Supertrend).
+- **Watchlist Manager**: Exposes standard watchlists for ETFs, IT, Banking, and Energy sectors to streamline multi-sector scanning.
+
+## Exposed Tools
+
+The server exposes the following tools:
+1. **`analyze_stock`**: Fetches and evaluates full technical indicators (RSI, EMAs, Supertrend, ADX, MACD, Bollinger Bands, Volume SMA) for a single ticker.
+2. **`analyze_multiple_stocks`**: Batch processes analysis for a list of tickers.
+3. **`find_buy_opportunities`**: Scans a custom or default watchlist of tickers to find matching buy signals based on configurable filters (EMA crossover, RSI oversold, volume surge, etc.).
+4. **`get_watchlist`**: Retrieves lists of stock/ETF symbols for a given sector or category.
+    *   **Parameters**: `category` (enum: `"ETF"`, `"IT"`, `"BANK"`, `"ENERGY"`, `"POTENTIAL"`, `"ALL"`). Default is `"ETF"`.
+    *   **Categories**:
+        *   `ETF`: Multi-asset index and commodity tracking ETFs (`NIFTYBEES.NS`, `GOLDBEES.NS`, etc.)
+        *   `IT`: Sector-focused IT ETFs and major IT stocks (`ITBEES.NS`, `TCS.NS`, `INFY.NS`, etc.)
+        *   `BANK`: Banking sector ETFs and major private/public banks (`BANKBEES.NS`, `HDFCBANK.NS`, `SBIN.NS`, etc.)
+        *   `ENERGY`: Energy/utility sector ETFs and major corporations (`CPSEETF.NS`, `RELIANCE.NS`, `NTPC.NS`, etc.)
+        *   `POTENTIAL`: Highly active, structural growth stocks that have high potential and are under the radar (`HFCL.NS`, `KPITTECH.NS`, `MAZDOCK.NS`, `RVNL.NS`, `CDSL.NS`, `IREDA.NS`)
 
 ## Connecting via Claude Desktop / Antigravity
 
