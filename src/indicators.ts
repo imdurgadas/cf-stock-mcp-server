@@ -32,9 +32,6 @@ export interface StockDataResult {
   volume: number;
   volume_sma20: number | null;
   is_volume_surge: boolean;
-  recommendation: 'BUY' | 'HOLD' | 'SELL';
-  is_buy_signal: boolean;
-  target_sell_price: number | null;
   comment: string;
   status: string;
   error?: string;
@@ -153,64 +150,69 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       if ((currentRsi ?? 50) < 30) momentum = "Oversold";
       else if ((currentRsi ?? 50) > 70) momentum = "Overbought";
       
-      let alerts = [];
-      if (fall_pct <= -2) alerts.push(`Significant dip (${fall_pct.toFixed(2)}%)`);
-      if (isVolumeSurge) alerts.push("Volume surge detected");
-      if (isMacdBullish) alerts.push("MACD Bullish crossover");
-      if (isNearBbLower) alerts.push("Price near Bollinger Lower Band (Oversold extreme)");
-      if (isEmaBullishCrossover) alerts.push("EMA 20/50 Bullish Crossover (Trend Reversal)");
-      if ((currentAdx ?? 0) > 25) alerts.push("Strong trending market");
+      let qualified = [];
+      let totalParams = 0;
       
-      let humanRec = "Hold";
-      const isBullish = trend.includes("Bullish");
+      // Parameter 1: Bullish Trend (EMA20/50 + ST Green)
+      totalParams++;
+      const trendBullish = ltp > (currentEma20 ?? 0) && ltp > (currentEma50 ?? 0) && isStGreen;
+      if (trendBullish) {
+        qualified.push("Bullish Trend Confirmation");
+      }
       
-      if (trend === "Strong Bullish") {
-        if (fall_pct < -1.5 || isNearBbLower) {
-          humanRec = (isVolumeSurge || isMacdBullish) ? "Strong Buy (High Conviction)" : "Great Buy on Dips";
-        } else if (isMacdBullish) {
-          humanRec = "Trend-Following Entry";
-        } else {
-          humanRec = "Strong Hold (Uptrend)";
-        }
-      } else if (isBullish) {
-        if (fall_pct < -1) {
-          humanRec = isVolumeSurge ? "High Conviction Buy on Dips" : "Buy on Dips";
-        } else if (isMacdBullish) {
-          humanRec = "Momentum Buy";
-        }
-      } else if (momentum === "Oversold") {
-        humanRec = isNearBbLower ? "Deep Value Buy (Oversold Extreme)" : "Speculative Buy (Oversold)";
-      } else if (momentum === "Overbought") {
-        humanRec = "Avoid / Profit Booking (Overbought)";
-      } else if (isMacdBullish && ltp > (currentEma20 ?? 0)) {
-        humanRec = "Potential Reversal Entry";
-      } else if (isEmaBullishCrossover) {
-        humanRec = "Trend-Start Entry";
+      // Parameter 2: Trend Strength (ADX >= 25)
+      totalParams++;
+      if ((currentAdx ?? 0) >= 25) {
+        qualified.push("ADX Trend Strength (>= 25)");
+      }
+      
+      // Parameter 3: Deep Value (RSI < 30)
+      totalParams++;
+      if ((currentRsi ?? 50) < 30) {
+        qualified.push("RSI Deep Value (< 30)");
+      } else if ((currentRsi ?? 50) >= 50 && (currentRsi ?? 50) <= 65) {
+        qualified.push("RSI Pullback Range (50-65)");
+      }
+      
+      // Parameter 4: Volume Surge (> 1.5x)
+      totalParams++;
+      if (isVolumeSurge) {
+        qualified.push("Volume Surge (> 1.5x 20-day SMA)");
+      }
+      
+      // Parameter 5: Bollinger Band Mean Reversion
+      totalParams++;
+      if (isNearBbLower) {
+        qualified.push("Bollinger Lower Band Reversion");
+      }
+      
+      // Parameter 6: MACD Bullish Crossover
+      totalParams++;
+      if (isMacdBullish) {
+        qualified.push("MACD Bullish Crossover");
+      }
+      
+      // Parameter 7: EMA Bullish Crossover
+      totalParams++;
+      if (isEmaBullishCrossover) {
+        qualified.push("EMA 20/50 Bullish Crossover");
       }
 
-      let recType: 'BUY' | 'HOLD' | 'SELL' = "HOLD";
-      if (humanRec.includes("Buy") || humanRec.includes("Entry")) {
-        recType = "BUY";
-      } else if (humanRec.includes("Avoid") || humanRec.includes("Profit Booking") || trend === "Bearish") {
-        recType = "SELL";
+      // Parameter 8: Dip Size (<= -2%)
+      totalParams++;
+      if (fall_pct <= -2) {
+        qualified.push(`Price Dip (<= -2%, actual: ${fall_pct.toFixed(2)}%)`);
       }
 
-      let targetPrice: number | null = null;
-      if (recType === "BUY" || recType === "HOLD") {
-        // Use Bollinger Upper Band as a target if available, otherwise 5% profit
-        const bbUpper = currentBb?.upper ?? null;
-        const fallbackTarget = ltp * 1.05;
-        targetPrice = bbUpper && bbUpper > ltp ? bbUpper : fallbackTarget;
+      let summary = `Trend: ${trend} | Momentum: ${momentum} | Qualified parameters: ${qualified.length}/${totalParams}`;
+      if (qualified.length > 0) {
+        summary += ` [${qualified.join(", ")}]`;
+      } else {
+        summary += ` [None]`;
       }
-
-      let summary = `${humanRec}. Trend is ${trend} with ${momentum} momentum.`;
-      if (alerts.length > 0) summary += ` ${alerts.join(". ")}.`;
       
       return {
-        comment: summary,
-        recommendation: recType,
-        is_buy_signal: recType === "BUY",
-        target_sell_price: safeFormat(targetPrice)
+        comment: summary
       };
     };
 
@@ -244,9 +246,6 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       volume: currentVolume,
       volume_sma20: safeFormat(currentVolumeSma, 0),
       is_volume_surge: isVolumeSurge,
-      recommendation: analysis.recommendation,
-      is_buy_signal: analysis.is_buy_signal,
-      target_sell_price: analysis.target_sell_price,
       comment: analysis.comment,
       status: 'success',
     };
@@ -271,9 +270,6 @@ export async function fetchStockData(rawSymbol: string): Promise<StockDataResult
       volume: 0,
       volume_sma20: null,
       is_volume_surge: false,
-      recommendation: 'HOLD',
-      is_buy_signal: false,
-      target_sell_price: null,
       comment: "Analysis failed",
       status: 'error',
       error: error.message || String(error),

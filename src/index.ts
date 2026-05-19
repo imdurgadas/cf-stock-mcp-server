@@ -92,7 +92,7 @@ export class StockMCP extends McpAgent {
         }
         console.log(`[analyze_stock] Triggered for symbol: ${symbol} (formatted: ${cleanSymbol})`);
         const result = await fetchStockData(cleanSymbol);
-        console.log(`[analyze_stock] Result for ${cleanSymbol}: status = ${result.status}, price = ${result.ltp}, rec = ${result.recommendation}`);
+        console.log(`[analyze_stock] Result for ${cleanSymbol}: status = ${result.status}, price = ${result.ltp}`);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
@@ -113,7 +113,7 @@ export class StockMCP extends McpAgent {
           }
           console.log(`[analyze_multiple_stocks] Evaluating ${sym} (formatted: ${cleanSymbol})...`);
           const res = await fetchStockData(cleanSymbol);
-          console.log(`[analyze_multiple_stocks] Evaluated ${cleanSymbol}: price = ${res.ltp}, rec = ${res.recommendation}`);
+          console.log(`[analyze_multiple_stocks] Evaluated ${cleanSymbol}: price = ${res.ltp}`);
           results.push(res);
         }
         return {
